@@ -65,6 +65,17 @@ class App:
     def get_this_program_window(self):
         return [win for win in gw.getAllWindows() if "My Switcher Program" in win.title][0]
 
+    def get_acronym_score(self, search, title):
+        words = re.findall(r'\b\w', title) 
+        acronym = ''.join(words)
+
+        search_idx = 0
+        for char in acronym:
+            if search_idx < len(search) and char.lower() == search[search_idx].lower():
+                search_idx += 1
+
+        return search_idx
+
     def update_list(self, *args):
         search = self.entry_var.get()
         keywords = search.split()
@@ -72,20 +83,13 @@ class App:
 
         for i, win in enumerate(self.vscode_windows):
             base_score = sum(int(re.search(keyword, win.title, re.I) is not None) for keyword in keywords)
-            acronym_score = 0
-            words = re.findall(r'\b\w', win.title)
-            acronym = ''.join(words)
-
-            if re.search(search, acronym, re.I):
-                acronym_score = 100
+           
+            acronym_score = self.get_acronym_score(search, win.title)
 
             score = base_score + acronym_score
             score_list.append((score, win.title))
 
         score_list.sort(reverse=True, key=lambda x: x[0])
-        # Print score of each window
-        for score, title in score_list:
-            print(score, title)
 
         self.listbox.delete(0, tk.END)
         for score, title in score_list:
