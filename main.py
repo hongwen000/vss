@@ -18,6 +18,7 @@ class App:
         self.listbox = tk.Listbox(root, font=("Helvetica", 14), width=40)
         self.update_list()
         self.entry.bind('<Return>', self.switch_window)
+        self.entry.bind('<Escape>', self.cancel_window)
         self.entry.pack()
         self.listbox.pack()
         self.this_program_window = None
@@ -27,6 +28,7 @@ class App:
         id1 = manager.register_hotkey([Key.alt_l, Key.space], None, self.activate)
         manager.suppress = True
         
+        self.update_vscode_windows()  # 更新 vscode 窗口列表
         self.root.title("My Switcher Program")
         self.entry.focus()
 
@@ -78,31 +80,36 @@ class App:
 
     def update_list(self, *args):
         search = self.entry_var.get()
-        keywords = search.split()
-        score_list = []
+        if len(search) == 0:
+            self.listbox.delete(0, tk.END)
+            for win in self.vscode_windows:
+                self.listbox.insert(tk.END, win.title)
+        else:
+            keywords = search.split()
+            score_list = []
 
-        for i, win in enumerate(self.vscode_windows):
-            base_score = sum(int(re.search(keyword, win.title, re.I) is not None) for keyword in keywords)
-           
-            acronym_score = self.get_acronym_score(search, win.title)
+            for i, win in enumerate(self.vscode_windows):
+                base_score = sum(int(re.search(keyword, win.title, re.I) is not None) for keyword in keywords)
+            
+                acronym_score = self.get_acronym_score(search, win.title)
 
-            score = base_score + acronym_score
-            score_list.append((score, win.title))
+                score = base_score + acronym_score
+                score_list.append((score, win.title))
 
-        score_list.sort(reverse=True, key=lambda x: x[0])
+            score_list.sort(reverse=True, key=lambda x: x[0])
 
-        self.listbox.delete(0, tk.END)
-        for score, title in score_list:
-            if score > 0:
-                self.listbox.insert(tk.END, title)
+            self.listbox.delete(0, tk.END)
+            for score, title in score_list:
+                if score > 0:
+                    self.listbox.insert(tk.END, title)
 
         if len(self.listbox.get(0, tk.END)) > 0:
             self.listbox.select_set(0)
 
-    def switch_window(self, event):
+    def __switch_window(self, selection):
         this_program_window = self.get_this_program_window()
         this_program_window.minimize()
-        selection = self.listbox.curselection()
+
         if selection:
             title = self.listbox.get(selection[0])
             for win in self.vscode_windows:
@@ -110,7 +117,15 @@ class App:
                     win.restore()
                     win.activate()
                     break
+        self.entry.delete(0, tk.END)
         self.entry.focus()
+
+    def cancel_window(self, event):
+        self.__switch_window(None)
+
+    def switch_window(self, event):
+        selection = self.listbox.curselection()
+        self.__switch_window(selection)
 
     def switch_window_button(self):
         self.switch_window(None)
