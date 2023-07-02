@@ -72,11 +72,14 @@ class App:
         acronym = ''.join(words)
 
         search_idx = 0
-        for char in acronym:
-            if search_idx < len(search) and char.lower() == search[search_idx].lower():
+        for idx, char in enumerate(acronym):
+            if search_idx >= len(search):
+                break
+
+            if char.lower() == search[search_idx].lower():
                 search_idx += 1
 
-        return search_idx
+        return search_idx if search_idx == len(search) else 0
 
     def update_list(self, *args):
         search = self.entry_var.get()
@@ -116,6 +119,7 @@ class App:
                 if win.title == title:
                     win.restore()
                     win.activate()
+                    win.maximize()
                     break
         self.entry.delete(0, tk.END)
         self.entry.focus()
