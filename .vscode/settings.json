@@ -1,0 +1,14 @@
+{
+    "workbench.colorCustomizations": {
+        "[Default Light+]": {
+            "notebook.outputContainerBackgroundColor": "#ffffff"
+        },
+        "editor.selectionBackground": "#e788ff",
+        "editor.selectionHighlightBackground": "#ff0000",
+        "editor.findMatchBackground": "#00cc44a8",
+        "editor.findMatchHighlightBackground": "#ff7b00a1",
+        "activityBar.background": "#043525",
+        "titleBar.activeBackground": "#054A34",
+        "titleBar.activeForeground": "#EBFEF8"
+    }
+}
