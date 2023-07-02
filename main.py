@@ -58,6 +58,8 @@ class App:
 
     def update_vscode_windows(self):
         self.vscode_windows = self.get_vscode_windows()
+        for w in self.vscode_windows:
+            print(w.title)
         self.update_list()
 
     def get_this_program_window(self):
@@ -65,10 +67,31 @@ class App:
 
     def update_list(self, *args):
         search = self.entry_var.get()
-        self.listbox.delete(0, tk.END)
+        keywords = search.split()
+        score_list = []
+
         for i, win in enumerate(self.vscode_windows):
-            if re.search(search, win.title, re.I):
-                self.listbox.insert(tk.END, win.title)
+            base_score = sum(int(re.search(keyword, win.title, re.I) is not None) for keyword in keywords)
+            acronym_score = 0
+            words = re.findall(r'\b\w', win.title)
+            acronym = ''.join(words)
+
+            if re.search(search, acronym, re.I):
+                acronym_score = 100
+
+            score = base_score + acronym_score
+            score_list.append((score, win.title))
+
+        score_list.sort(reverse=True, key=lambda x: x[0])
+        # Print score of each window
+        for score, title in score_list:
+            print(score, title)
+
+        self.listbox.delete(0, tk.END)
+        for score, title in score_list:
+            if score > 0:
+                self.listbox.insert(tk.END, title)
+
         if len(self.listbox.get(0, tk.END)) > 0:
             self.listbox.select_set(0)
 
