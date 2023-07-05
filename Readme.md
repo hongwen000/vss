@@ -5,6 +5,7 @@ VSCode Window Launcher是一个跨平台实用程序，帮助开发者快速定�
 ## 特点
 
 - **非常快**：是否受尽Windows系统不稳定的任务栏的折磨？是否对着一堆窗口按下Alt+F4时感到不知所措？本应用能非常快地帮你找到并切换到你想要的窗口！
+- **全局快捷键**：VSCode Window Launcher提供了一个全局快捷键**Alt+Space**，用于快速激活应用程序并开始搜索窗口。按下**Alt+Space**组合键将打开VSCode Window Launcher界面，您可以立即开始输入搜索查询，然后按Enter键以快速切换到所选的VSCode窗口或其他窗口。
 - **智能窗口搜索**：使用智能搜索算法高效定位和聚焦所需的VSCode窗口，该算法会考虑到窗口标题的完全匹配以及首字母匹配。
 - **优先级排序结果**：搜索结果根据完全标题匹配和首字母缩写匹配进行排序，用户输入的缩写匹配具有更高的权重。
 
@@ -46,7 +47,7 @@ python setup.py
 
 ## 全局快捷键
 
-VSCode Window Launcher还提供了一个全局快捷键**Alt+Space**，用于快速激活应用程序并开始搜索窗口。按下**Alt+Space**组合键将打开VSCode Window Launcher界面，您可以立即开始输入搜索查询，然后按Enter键以快速切换到所选的VSCode窗口或其他窗口。
+VSCode Window Launcher提供了一个全局快捷键**Alt+Space**，用于快速激活应用程序并开始搜索窗口。按下**Alt+Space**组合键将打开VSCode Window Launcher界面，您可以立即开始输入搜索查询，然后按Enter键以快速切换到所选的VSCode窗口或其他窗口。
 
 ## 贡献
 
@@ -72,6 +73,7 @@ VSCode Window Launcher is a cross-platform utility that helps developers quickly
 ## Features
 
 - **Lightning Fast**: Tired of struggling with the unpredictable Windows taskbar? Feeling overwhelmed when trying to navigate through a sea of open windows with Alt+F4? This application is lightning fast in helping you locate and switch to the window you desire!
+- **Global Shortcut Key**: VSCode Window Launcher provides a global shortcut key **Alt+Space** to quickly activate the application and start searching for windows.
 - **Intelligent Window Search**: Efficiently locates and brings focus to desired VSCode windows using a smart search algorithm that considers both complete title matches and first letter matches of window titles.
 - **Priority-based Sorting**: Search results are sorted based on full title matches and first letter abbreviation matches, with user-input abbreviation matches given higher priority.
 
@@ -113,7 +115,7 @@ This will create shortcuts for VSCode Window Launcher on your desktop and start 
 
 ## Global Shortcut Key
 
-VSCode Window Launcher also provides a global shortcut key **Alt+Space** to quickly activate the application and start searching for windows. Pressing the **Alt+Space** key combination will open the VSCode Window Launcher interface, where you can immediately start typing your search query, and then press Enter to quickly switch to the selected VSCode window or other windows.
+VSCode Window Launcher provides a global shortcut key **Alt+Space** to quickly activate the application and start searching for windows. Pressing the **Alt+Space** key combination will open the VSCode Window Launcher interface, where you can immediately start typing your search query, and then press Enter to quickly switch to the selected VSCode window or other windows.
 
 ## Contributing
 
