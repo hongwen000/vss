@@ -113,6 +113,13 @@ class App:
         self.update_list()
         self.entry.bind('<Return>', self.switch_window)
         self.entry.bind('<Escape>', self.cancel_window)
+        self.entry.bind('<Up>', self.select_up)
+        self.entry.bind('<Down>', self.select_down)
+        self.listbox.bind('<Up>', self.select_up)
+        self.listbox.bind('<Down>', self.select_down)
+        self.listbox.bind('<Return>', self.switch_window)
+        self.listbox.bind('<Escape>', self.cancel_window)
+
         self.entry.pack()
         self.listbox.pack()
         self.this_program_window = None
@@ -131,7 +138,7 @@ class App:
 
         # 将窗口居中
         window_width = self.root.winfo_reqwidth() + 500
-        window_height = self.root.winfo_reqheight()
+        window_height = self.root.winfo_reqheight() + 200
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
 
@@ -139,6 +146,20 @@ class App:
         y_coord = screen_height // 2 - window_height // 2
 
         self.root.geometry(f'{window_width}x{window_height}+{x_coord}+{y_coord}')
+
+    def select_up(self, event):
+        current_selection = self.listbox.curselection()
+        if current_selection:
+            self.listbox.select_clear(current_selection)
+            self.listbox.select_set(current_selection[0]-1)
+            self.listbox.see(current_selection[0]-1) # Ensure new selection is visible
+
+    def select_down(self, event):
+        current_selection = self.listbox.curselection()
+        if current_selection:
+            self.listbox.select_clear(current_selection)
+            self.listbox.select_set(current_selection[0]+1)
+            self.listbox.see(current_selection[0]+1) # Ensure new selection is visible
         
 
     def activate(self):
