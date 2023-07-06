@@ -328,10 +328,10 @@ class App:
                     # self.entry.delete(0, tk.END)
                     # self.entry.focus()
                     # left, top, right, bottom = win._getWindowRect()
-                    win.restore()
+                    # win.restore()
+                    # win.maximize()
+                    result = ctypes.windll.user32.SetWindowPos(win._hWnd, 0, 0, 0, 0, 0, 0x43)
                     win.activate()
-                    win.maximize()
-                    # result = ctypes.windll.user32.SetWindowPos(win._hWnd, 0, left, top, right - left, bottom - top, 0)
                     self.recent = win.title
                     break
         self.entry.delete(0, tk.END)
