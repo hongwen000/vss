@@ -103,6 +103,7 @@ def is_alt_tab_window(hwnd):
 class App:
 
     def __init__(self, root):
+        self.recent = ""
         self.root = root
         self.entry_var = tk.StringVar()
         self.entry_var.trace("w", self.update_list)
@@ -269,32 +270,40 @@ class App:
         not_vscode = [win for win in self.window_list if win not in is_vscode]
         if len(search) == 0:
             self.listbox.delete(0, tk.END)
-            for win in (is_vscode + not_vscode):
-                # title = self.remove_vscode_postfix(win.title)
-                title = win.title
-                self.listbox.insert(tk.END, title)
+            win_titles = [win.title for win in self.window_list]
+            if self.recent in win_titles:
+                self.listbox.insert(tk.END, self.recent)
+            for win_title in win_titles:
+                if win_title != self.recent:
+                    self.listbox.insert(tk.END, win_title)
         else:
             keywords = search.split()
             score_list = []
             
 
             for i, win in enumerate(is_vscode):
+                rcu_score = 0
                 search_title = self.remove_vscode_postfix(win.title)
                 orig_title = win.title
+                if orig_title == self.recent:
+                    rcu_score = 10
                 base_score = sum(int(re.search(keyword, search_title, re.I) is not None) for keyword in keywords)
                 base_score *= 100
             
                 acronym_score = self.get_acronym_score(search, search_title)
 
-                score = base_score + acronym_score
+                score = base_score + acronym_score + rcu_score
                 score_list.append((score, orig_title))
 
             for i, win in enumerate(not_vscode):
+                rcu_score = 0
                 search_title = win.title
                 orig_title = win.title
+                if orig_title == self.recent:
+                    rcu_score = 10
                 base_score = sum(int(re.search(keyword, search_title, re.I) is not None) for keyword in keywords)
                 base_score *= 100
-                score = base_score + 0
+                score = base_score + 0 + rcu_score
                 score_list.append((score, orig_title))
 
             score_list.sort(reverse=True, key=lambda x: x[0])
@@ -316,9 +325,14 @@ class App:
             title = self.listbox.get(selection[0])
             for win in self.window_list:
                 if win.title == title:
+                    # self.entry.delete(0, tk.END)
+                    # self.entry.focus()
+                    # left, top, right, bottom = win._getWindowRect()
                     win.restore()
                     win.activate()
                     win.maximize()
+                    # result = ctypes.windll.user32.SetWindowPos(win._hWnd, 0, left, top, right - left, bottom - top, 0)
+                    self.recent = win.title
                     break
         self.entry.delete(0, tk.END)
         self.entry.focus()
