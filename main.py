@@ -41,8 +41,7 @@ LPTITLEBARINFO = POINTER(tagTITLEBARINFO)
 TITLEBARINFO = tagTITLEBARINFO
 
 class tagWINDOWINFO(Structure):
-
-    def __str__(self):
+    def __str__(self) -> str:
         return '\n'.join([key + ':' + str(getattr(self, key)) for key, value in self._fields_])
 
 tagWINDOWINFO._fields_ = [
@@ -61,7 +60,7 @@ WINDOWINFO = tagWINDOWINFO
 LPWINDOWINFO = POINTER(tagWINDOWINFO)
 PWINDOWINFO = POINTER(tagWINDOWINFO)
 
-def is_alt_tab_window(hwnd):
+def is_alt_tab_window(hwnd: int) -> bool:
     """Check whether a window is shown in alt-tab.
 
     See http://stackoverflow.com/a/7292674/238472 for details.
@@ -101,10 +100,10 @@ def is_alt_tab_window(hwnd):
     return True
 
 class App:
-
-    def __init__(self, root):
-        self.recent = ""
+    def __init__(self, root, tray_icon) -> None:
+        self.recent: str = ""
         self.root = root
+        self.tray_icon = tray_icon
         self.entry_var = tk.StringVar()
         self.entry_var.trace("w", self.update_list)
         self.entry = tk.Entry(root, textvariable=self.entry_var)
@@ -125,7 +124,7 @@ class App:
         self.listbox.pack()
         self.this_program_window = None
 
-        self.switch_button = tk.Button(root, text="Switch", command=self.switch_window_button)
+        self.switch_button = tk.Button(root, text="Quit", command=self.exit_tkinter)
         self.switch_button.pack()
         id1 = manager.register_hotkey([Key.alt_l, Key.space], None, self.activate)
         manager.suppress = True
@@ -347,13 +346,16 @@ class App:
     def switch_window_button(self):
         self.switch_window(None)
 
+    def exit_tkinter(self):
+        self.root.quit()
+        self.root.destroy()
+        self.tray_icon.stop()
+
 import pystray
 import threading
 import time, sys
 
 def main():
-    root = tk.Tk()
-    app = App(root)
     quit_event = threading.Event()
     # 创建一个新的白色图片
     image = Image.new('RGB', (64, 64), color = 'white')
@@ -367,24 +369,15 @@ def main():
     def run_icon():
         icon.run()
 
-    def exit_action(icon, item):
-        icon.stop()
-        quit_event.set()
-        root.quit()
-        sys.exit()
-        root.destroy()
-
-    menu = (pystray.MenuItem('Exit', exit_action),)
+    menu = ()
     # 现在你可以使用这个图片作为你的系统托盘图标
     icon = pystray.Icon("name", image, "My System Tray Icon", menu)
     icon_thread = threading.Thread(target=run_icon)
     icon_thread.start()
 
+    root = tk.Tk()
+    app = App(root, icon)
     root.mainloop()
-    # while not quit_event.is_set():
-    #     root.update()
-    #     root.update_idletasks()
-    #     time.sleep(1.0 / 60.0)
 
 
 from ctypes import windll
