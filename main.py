@@ -5,7 +5,9 @@ from pynput import keyboard
 import re
 import ctypes
 import pyautogui
+from pywinauto import Desktop, Application
 from PIL import Image, ImageDraw
+from pprint import pprint
 import win32con
 import wordninja
 import win32api
@@ -39,7 +41,7 @@ tagTITLEBARINFO._fields_ = [
 PTITLEBARINFO = POINTER(tagTITLEBARINFO)
 LPTITLEBARINFO = POINTER(tagTITLEBARINFO)
 TITLEBARINFO = tagTITLEBARINFO
-
+only_show_vscode = True
 class tagWINDOWINFO(Structure):
     def __str__(self) -> str:
         return '\n'.join([key + ':' + str(getattr(self, key)) for key, value in self._fields_])
@@ -109,16 +111,19 @@ class App:
         self.entry = tk.Entry(root, textvariable=self.entry_var)
         self.entry.configure(font=("Helvetica", 14))
         self.window_list = self.get_windows()
-        self.listbox = tk.Listbox(root, font=("Helvetica", 14), width=40)
+        self.listbox = tk.Listbox(root, font=("Helvetica", 14), width=80)
         self.update_list()
+
         self.entry.bind('<Return>', self.switch_window)
         self.entry.bind('<Escape>', self.cancel_window)
-        self.entry.bind('<Up>', self.select_up)
-        self.entry.bind('<Down>', self.select_down)
+        self.entry.bind('<KeyRelease-Up>', self.select_up)
+        self.entry.bind('<KeyRelease-Down>', self.select_down)
+
         self.listbox.bind('<Up>', self.select_up)
         self.listbox.bind('<Down>', self.select_down)
         self.listbox.bind('<Return>', self.switch_window)
         self.listbox.bind('<Escape>', self.cancel_window)
+        # self.listbox.bind('<<ListboxSelect>>', self.click_select)
 
         self.entry.pack()
         self.listbox.pack()
@@ -137,7 +142,7 @@ class App:
         self.root.overrideredirect(True)
 
         # 将窗口居中
-        window_width = self.root.winfo_reqwidth() + 500
+        window_width = self.root.winfo_reqwidth() + 1200
         window_height = self.root.winfo_reqheight() + 200
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
@@ -146,8 +151,17 @@ class App:
         y_coord = screen_height // 2 - window_height // 2
 
         self.root.geometry(f'{window_width}x{window_height}+{x_coord}+{y_coord}')
+        self.ignore = True
+
+    def click_select(self, event):
+        with open('log.txt', 'a+') as f:
+            print("click_select", self.listbox.curselection(), self.ignore, file=f)
+        if not self.ignore:
+            self.ignore = True
+            self.switch_window(event)
 
     def select_up(self, event):
+        self.ignore = True
         current_selection = self.listbox.curselection()
         if current_selection:
             self.listbox.select_clear(current_selection)
@@ -263,13 +277,35 @@ class App:
 
 
     def update_list(self, *args):
+        magic_searches = {
+            "a": "aosp_r743",
+            "s": "kernel_sunfish_r743",
+            "g": "kernel_goldfish_r743",
+            "t": "androidtools_r743",
+            "ra": "aosp_r743",
+            "rs": "kernel_sunfish_r743",
+            "rg": "kernel_goldfish_r743",
+            "rt": "androidtools_r743",
+            "ua": "aosp_ubuntu",
+            "us": "kernel_sunfish_ubuntu",
+            "ug": "kernel_goldfish_ubuntu",
+            "ut": "androidtools_ubuntu",
+            "ya": "aosp_yzy_r743",
+            "ys": "kernel_sunfish_yzy_r743",
+            "yg": "kernel_goldfish_yzy_r743",
+            "yt": "androidtools_yzy_r743",
+        }
         search = self.entry_var.get()
+        if search in magic_searches:
+            search = magic_searches[search]
         not_vscode, is_vscode = [], []
         is_vscode = [win for win in self.window_list if "Visual Studio Code" in win.title]
         not_vscode = [win for win in self.window_list if win not in is_vscode]
+        if only_show_vscode:
+            not_vscode.clear()
         if len(search) == 0:
             self.listbox.delete(0, tk.END)
-            win_titles = [win.title for win in self.window_list]
+            win_titles = [win.title for win in (is_vscode + not_vscode) if len(win.title) > 0]
             if self.recent in win_titles:
                 self.listbox.insert(tk.END, self.recent)
             for win_title in win_titles:
@@ -329,9 +365,20 @@ class App:
                     # left, top, right, bottom = win._getWindowRect()
                     # win.restore()
                     # win.maximize()
-                    result = ctypes.windll.user32.SetWindowPos(win._hWnd, 0, 0, 0, 0, 0, 0x43)
-                    win.activate()
+                    # result = ctypes.windll.user32.SetWindowPos(win._hWnd, 0, 0, 0, 0, 0, 0x43)
+                    # win.activate()
+
+                    try:
+                        app_spec = Application(backend='win32').connect(handle=win._hWnd)
+                        print(app_spec)
+                        win_spec = app_spec.window(handle=win._hWnd)
+                        print(win_spec)
+                        win_spec.set_focus()
+                    except Exception as e:
+                        print("Exception")
+                        print(e)
                     self.recent = win.title
+
                     break
         self.entry.delete(0, tk.END)
         self.entry.focus()
