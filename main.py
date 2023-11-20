@@ -1,4 +1,5 @@
 from PyHotKey import Key, keyboard_manager as manager
+import json
 import pygetwindow as gw
 import tkinter as tk
 from pynput import keyboard
@@ -101,6 +102,53 @@ def is_alt_tab_window(hwnd: int) -> bool:
 
     return True
 
+def Get_HWND_DPI(window_handle):
+    # To detect high DPI displays and avoid need to set Windows compatibility flags
+    import os
+
+    if os.name == "nt":
+        from ctypes import windll, pointer, wintypes
+
+        try:
+            windll.shcore.SetProcessDpiAwareness(1)
+        except Exception:
+            pass  # this will fail on Windows Server and maybe early Windows
+        DPI100pc = 96  # DPI 96 is 100% scaling
+        DPI_type = 0  # MDT_EFFECTIVE_DPI = 0, MDT_ANGULAR_DPI = 1, MDT_RAW_DPI = 2
+        winH = wintypes.HWND(window_handle)
+        monitorhandle = windll.user32.MonitorFromWindow(
+            winH, wintypes.DWORD(2)
+        )  # MONITOR_DEFAULTTONEAREST = 2
+        X = wintypes.UINT()
+        Y = wintypes.UINT()
+        try:
+            windll.shcore.GetDpiForMonitor(
+                monitorhandle, DPI_type, pointer(X), pointer(Y)
+            )
+            return X.value, Y.value, (X.value + Y.value) / (2 * DPI100pc)
+        except Exception:
+            return 96, 96, 1  # Assume standard Windows DPI & scaling
+    else:
+        return None, None, 1  # What to do for other OSs?
+
+
+def TkGeometryScale(s, cvtfunc):
+    patt = r"(?P<W>\d+)x(?P<H>\d+)\+(?P<X>\d+)\+(?P<Y>\d+)"  # format "WxH+X+Y"
+    R = re.compile(patt).search(s)
+    G = str(cvtfunc(R.group("W"))) + "x"
+    G += str(cvtfunc(R.group("H"))) + "+"
+    G += str(cvtfunc(R.group("X"))) + "+"
+    G += str(cvtfunc(R.group("Y")))
+    return G
+
+
+def MakeTkDPIAware(TKGUI):
+    TKGUI.DPI_X, TKGUI.DPI_Y, TKGUI.DPI_scaling = Get_HWND_DPI(TKGUI.winfo_id())
+    print("DPI scaling:", TKGUI.DPI_scaling)
+    TKGUI.TkScale = lambda v: int(float(v) * TKGUI.DPI_scaling)
+    TKGUI.TkGeometryScale = lambda s: TkGeometryScale(s, TKGUI.TkScale)
+
+
 class App:
     def __init__(self, root, tray_icon) -> None:
         self.recent: str = ""
@@ -137,6 +185,8 @@ class App:
         self.update_window_list()  # 更新 vscode 窗口列表
         self.root.title("My Switcher Program")
         self.entry.focus()
+
+        self.custom_terms = {"aosp", "r743", "ubuntu"}  # Add your custom terms here
 
         # 隐藏标题栏
         self.root.overrideredirect(True)
@@ -177,6 +227,7 @@ class App:
         
 
     def activate(self):
+        MakeTkDPIAware(self.root)
         self.update_window_list()  # 更新 vscode 窗口列表
         this_program_window = self.get_this_program_window()
         this_program_window.minimize()
@@ -196,6 +247,21 @@ class App:
     def get_this_program_window(self):
         return [win for win in gw.getAllWindows() if "My Switcher Program" in win.title][0]
 
+    def preserve_custom_terms(self, title):
+        # Split the title into parts by " - "
+        parts = title.split(" - ")
+        result = []
+
+        for part in parts:
+            if part.lower() in self.custom_terms:
+                # If the part is a custom term, preserve it
+                result.append((part, True))
+            else:
+                # Otherwise, split it using WordNinja
+                split_parts = " ".join(wordninja.split(part))
+                result.append((split_parts, False))
+        return result
+
     def get_acronym_score(self, search, title):
         words = [" ".join(wordninja.split(part)) for part in title.split(" - ")]
         title = " ".join(words)
@@ -204,11 +270,13 @@ class App:
         acronym = [word[0] for word in words]
 
         # Start searching
+        print(title)
         matched_length = self.search_acronym(search, acronym, map_acronym_to_word)
         return matched_length  # Increase the score by matched length squared
 
 
     def search_acronym(self, search, acronym, map_acronym_to_word, search_idx=0, acronym_idx=0):
+        print("search_acronym", search, acronym, search_idx, acronym_idx)
         # Recursion base case: if all search chars are found, return len(search)
         if search_idx == len(search):
             return len(search)
@@ -275,26 +343,14 @@ class App:
             parts = parts[:-1]
         return " - ".join(parts)
 
+    def load_magic_searches(self):
+        with open('config.json', 'r') as file:
+            data = json.load(file)
+        return data
 
     def update_list(self, *args):
-        magic_searches = {
-            "a": "aosp_r743",
-            "s": "kernel_sunfish_r743",
-            "g": "kernel_goldfish_r743",
-            "t": "androidtools_r743",
-            "ra": "aosp_r743",
-            "rs": "kernel_sunfish_r743",
-            "rg": "kernel_goldfish_r743",
-            "rt": "androidtools_r743",
-            "ua": "aosp_ubuntu",
-            "us": "kernel_sunfish_ubuntu",
-            "ug": "kernel_goldfish_ubuntu",
-            "ut": "androidtools_ubuntu",
-            "ya": "aosp_yzy_r743",
-            "ys": "kernel_sunfish_yzy_r743",
-            "yg": "kernel_goldfish_yzy_r743",
-            "yt": "androidtools_yzy_r743",
-        }
+
+        magic_searches = self.load_magic_searches()
         search = self.entry_var.get()
         if search in magic_searches:
             search = magic_searches[search]
@@ -325,7 +381,7 @@ class App:
                 base_score = sum(int(re.search(keyword, search_title, re.I) is not None) for keyword in keywords)
                 base_score *= 100
             
-                acronym_score = self.get_acronym_score(search, search_title)
+                acronym_score = self.get_acronym_score(search, search_title) * 10
 
                 score = base_score + acronym_score + rcu_score
                 score_list.append((score, orig_title))
