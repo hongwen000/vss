@@ -3,7 +3,7 @@ import json
 import pygetwindow as gw
 import tkinter as tk
 from pynput import keyboard
-import re
+import re,os
 import ctypes
 import pyautogui
 from pywinauto import Desktop, Application
@@ -393,7 +393,9 @@ class App:
         return " - ".join(parts)
 
     def load_magic_searches(self):
-        with open('config.json', 'r') as file:
+        # get script directory
+        d = os.path.dirname(os.path.realpath(__file__))
+        with open(f'{d}/config.json', 'r') as file:
             data = json.load(file)
         return data
 
