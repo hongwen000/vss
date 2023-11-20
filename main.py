@@ -191,7 +191,7 @@ class App:
         self.root.title("My Switcher Program")
         self.entry.focus()
 
-        self.custom_terms = {"r743", "ubuntu", "msm", "aosp_host_working_dir", "aosp", "apk", "androidtools", "vss"}  # Add your custom terms here
+        self.custom_terms = {"android-kernel-sunfish-msm-4.14-android11-qpr3", "yzy-r743", "r743", "ubuntu", "aosp_host_working_dir", "aosp", "apk", "androidtools", "vss"}  # Add your custom terms here
 
         # 隐藏标题栏
         self.root.overrideredirect(True)
@@ -332,7 +332,7 @@ class App:
             # Try to match next search char in this word first (greedy)
             word = map_acronym_to_word[acronym_idx][acronym[acronym_idx]]
             word_match_len, whole_match = self.search_in_word(search, search_idx, word)
-            bonus = 1 if whole_match else 0
+            bonus = 1 * len(word) if whole_match else 0
             logger.debug("matched %s with %s in %s, word_match_len=%s", search[search_idx], acronym[acronym_idx], word, word_match_len)
 
             # Try to match rest of search string with rest of acronyms
@@ -454,7 +454,8 @@ class App:
             for score, title in score_list:
                 if score > 0:
                     self.listbox.insert(tk.END, title)
-                    logger.debug("%s: %s", title, score)
+                    logger.info("%s: %s", title, score)
+            logger.info("---------------------")
 
         if len(self.listbox.get(0, tk.END)) > 0:
             self.listbox.select_set(0)
