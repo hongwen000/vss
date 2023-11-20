@@ -144,10 +144,15 @@ def TkGeometryScale(s, cvtfunc):
 
 def MakeTkDPIAware(TKGUI):
     TKGUI.DPI_X, TKGUI.DPI_Y, TKGUI.DPI_scaling = Get_HWND_DPI(TKGUI.winfo_id())
-    print("DPI scaling:", TKGUI.DPI_scaling)
+    logger.debug("DPI scaling: %s" % TKGUI.DPI_scaling)
     TKGUI.TkScale = lambda v: int(float(v) * TKGUI.DPI_scaling)
     TKGUI.TkGeometryScale = lambda s: TkGeometryScale(s, TKGUI.TkScale)
 
+import logging
+import sys
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 class App:
     def __init__(self, root, tray_icon) -> None:
@@ -186,7 +191,7 @@ class App:
         self.root.title("My Switcher Program")
         self.entry.focus()
 
-        self.custom_terms = {"aosp", "r743", "ubuntu"}  # Add your custom terms here
+        self.custom_terms = {"r743", "ubuntu", "msm", "aosp_host_working_dir", "aosp", "apk", "androidtools", "vss"}  # Add your custom terms here
 
         # 隐藏标题栏
         self.root.overrideredirect(True)
@@ -204,8 +209,8 @@ class App:
         self.ignore = True
 
     def click_select(self, event):
-        with open('log.txt', 'a+') as f:
-            print("click_select", self.listbox.curselection(), self.ignore, file=f)
+        # with open('log.txt', 'a+') as f:
+        #     logger.debug("click_select", self.listbox.curselection(), self.ignore, file=f)
         if not self.ignore:
             self.ignore = True
             self.switch_window(event)
@@ -241,42 +246,76 @@ class App:
     def update_window_list(self):
         self.window_list = self.get_windows()
         # for w in self.window_list:
-        #     print(w.title)
+        #     logger.debug(w.title)
         self.update_list()
 
     def get_this_program_window(self):
         return [win for win in gw.getAllWindows() if "My Switcher Program" in win.title][0]
 
-    def preserve_custom_terms(self, title):
-        # Split the title into parts by " - "
-        parts = title.split(" - ")
-        result = []
 
+    def nj_split(self, word):
+        if word in self.custom_terms:
+            return [word]
+        else:
+            return wordninja.split(word)
+
+    def split_title(self, title):
+        logger.debug(title)
+        # Split the title by " - " and process each part
+        parts = title.split(" - ")
+        logger.debug(parts)
+
+        # Process each part
+        processed_parts = []
+        part: str
         for part in parts:
-            if part.lower() in self.custom_terms:
-                # If the part is a custom term, preserve it
-                result.append((part, True))
-            else:
-                # Otherwise, split it using WordNinja
-                split_parts = " ".join(wordninja.split(part))
-                result.append((split_parts, False))
-        return result
+            no_term = False
+            # Iteratively check for custom terms and split them out
+            while not no_term:
+                term_idxs = [part.find(term) for term in self.custom_terms]
+                no_term = all(idx == -1 for idx in term_idxs)
+                if not no_term:
+                    first_term = min(list(filter(lambda x: x >= 0, term_idxs)))
+                    length = 0
+                    target_term = None
+                    for j, __term in enumerate(self.custom_terms):
+                        if term_idxs[j] == first_term:
+                            if len(__term) > length:
+                                length = len(__term)
+                                target_term = __term
+                    if target_term:
+                        before, term, after = part.partition(target_term)
+                        if before:
+                            sp = self.nj_split(before)
+                            processed_parts.extend(sp)  # Use wordninja to split
+                            logger.debug("before: %s, after: %s", before, sp)
+                        processed_parts.append(term)  # Add the custom term
+                        logger.debug(processed_parts)
+                        part = after  # Continue processing the rest of the string
+
+            # Add remaining part if any, split using wordninja
+            if part:
+                processed_parts.extend(self.nj_split(part))
+                logger.debug(processed_parts)
+
+        # Filter out empty strings and return the result
+        return list(filter(lambda x: len(x) > 0, processed_parts))
+
 
     def get_acronym_score(self, search, title):
-        words = [" ".join(wordninja.split(part)) for part in title.split(" - ")]
+        words = self.split_title(title)
         title = " ".join(words)
         words = list(filter(lambda x: len(x) > 0, title.split(" ")))
         map_acronym_to_word = [{word[0]: word} for word in words]
         acronym = [word[0] for word in words]
 
         # Start searching
-        print(title)
+        logger.debug("title: %s", title)
         matched_length = self.search_acronym(search, acronym, map_acronym_to_word)
         return matched_length  # Increase the score by matched length squared
 
 
     def search_acronym(self, search, acronym, map_acronym_to_word, search_idx=0, acronym_idx=0):
-        print("search_acronym", search, acronym, search_idx, acronym_idx)
         # Recursion base case: if all search chars are found, return len(search)
         if search_idx == len(search):
             return len(search)
@@ -285,42 +324,52 @@ class App:
         if acronym_idx == len(acronym):
             return 0
 
+        bonus = 0
+        logger.debug("search_acronym with %s[%s] %s against %s[%s] %s", search, search_idx, search[search_idx], acronym, acronym_idx, acronym[acronym_idx])
         max_match_len = 0
         # If this acronym char match this search char
         if search[search_idx].lower() == acronym[acronym_idx].lower():
             # Try to match next search char in this word first (greedy)
             word = map_acronym_to_word[acronym_idx][acronym[acronym_idx]]
-            word_match_len = self.search_in_word(search, search_idx, word)
+            word_match_len, whole_match = self.search_in_word(search, search_idx, word)
+            bonus = 1 if whole_match else 0
+            logger.debug("matched %s with %s in %s, word_match_len=%s", search[search_idx], acronym[acronym_idx], word, word_match_len)
 
             # Try to match rest of search string with rest of acronyms
-            for end_idx in range(search_idx + 1, search_idx + word_match_len + 1):
+            for end_idx in range(search_idx + word_match_len, len(search) + 1):
                 next_match_len = self.search_acronym(search, acronym, map_acronym_to_word, end_idx, acronym_idx + 1)
                 max_match_len = max(max_match_len, (end_idx - search_idx) + next_match_len)
 
         # Also try without matching this search char and move to next acronym
         max_match_len = max(max_match_len, self.search_acronym(search, acronym, map_acronym_to_word, search_idx, acronym_idx + 1))
 
-        return max_match_len
+        return max_match_len + bonus
 
     def search_in_word(self, search, search_idx, word):
         # Search for search[search_idx:] in word, return the length of matched substring
         word_idx = 0
         matched_len = 0
+        word_match = True
         while search_idx < len(search) and word_idx < len(word):
             if search[search_idx].lower() == word[word_idx].lower():
                 matched_len += 1
                 search_idx += 1
+            else:
+                word_match = False
             word_idx += 1
-        return matched_len
+        if ((search_idx < len(search) and search[search_idx] == ' ') or (search_idx == len(search))) and (word_match):
+            return matched_len, True
+        else:
+            return matched_len, False
 
 
     def get_acronym_score_old(self, search, title):
-        # print(title)
+        # logger.debug(title)
         words = [" ".join(wordninja.split(part)) for part in title.split(" - ")]
-        # print(words)
+        # logger.debug(words)
         title = " ".join(words)
         word_starts = re.findall(r'\b\w', title) 
-        # print(word_starts)
+        # logger.debug(word_starts)
         acronym = ''.join(word_starts)
 
         search_idx = 0
@@ -403,7 +452,7 @@ class App:
             for score, title in score_list:
                 if score > 0:
                     self.listbox.insert(tk.END, title)
-                    print(f"{title}: {score}")
+                    logger.debug("%s: %s", title, score)
 
         if len(self.listbox.get(0, tk.END)) > 0:
             self.listbox.select_set(0)
@@ -426,13 +475,13 @@ class App:
 
                     try:
                         app_spec = Application(backend='win32').connect(handle=win._hWnd)
-                        print(app_spec)
+                        logger.debug(app_spec)
                         win_spec = app_spec.window(handle=win._hWnd)
-                        print(win_spec)
+                        logger.debug(win_spec)
                         win_spec.set_focus()
                     except Exception as e:
-                        print("Exception")
-                        print(e)
+                        logger.debug("Exception")
+                        logger.debug(e)
                     self.recent = win.title
 
                     break
