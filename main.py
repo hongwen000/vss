@@ -237,6 +237,11 @@ class App:
         this_program_window = self.get_this_program_window()
         this_program_window.minimize()
         this_program_window.restore()
+        app_spec = Application(backend='win32').connect(handle=this_program_window._hWnd)
+        logger.debug(app_spec)
+        win_spec = app_spec.window(handle=this_program_window._hWnd)
+        logger.debug(win_spec)
+        win_spec.set_focus()
         self.entry.focus()
 
     def get_windows(self):
@@ -315,8 +320,11 @@ class App:
         return matched_length  # Increase the score by matched length squared
 
 
-    def search_acronym(self, search, acronym, map_acronym_to_word, search_idx=0, acronym_idx=0):
+    def search_acronym(self, search, acronym, map_acronym_to_word, search_idx=0, acronym_idx=0, depth=0):
         # Recursion base case: if all search chars are found, return len(search)
+        depth += 1
+        if depth > 10:
+            return 0
         if search_idx == len(search):
             return len(search)
         
@@ -332,16 +340,16 @@ class App:
             # Try to match next search char in this word first (greedy)
             word = map_acronym_to_word[acronym_idx][acronym[acronym_idx]]
             word_match_len, whole_match = self.search_in_word(search, search_idx, word)
-            bonus = 1 * len(word) if whole_match else 0
+            bonus = 1 * len(word) * 5 if whole_match else 0
             logger.debug("matched %s with %s in %s, word_match_len=%s", search[search_idx], acronym[acronym_idx], word, word_match_len)
 
             # Try to match rest of search string with rest of acronyms
             for end_idx in range(search_idx + word_match_len, len(search) + 1):
-                next_match_len = self.search_acronym(search, acronym, map_acronym_to_word, end_idx, acronym_idx + 1)
+                next_match_len = self.search_acronym(search, acronym, map_acronym_to_word, end_idx, acronym_idx + 1, depth)
                 max_match_len = max(max_match_len, (end_idx - search_idx) + next_match_len)
 
         # Also try without matching this search char and move to next acronym
-        max_match_len = max(max_match_len, self.search_acronym(search, acronym, map_acronym_to_word, search_idx, acronym_idx + 1))
+        max_match_len = max(max_match_len, self.search_acronym(search, acronym, map_acronym_to_word, search_idx, acronym_idx + 1, depth))
 
         return max_match_len + bonus
 
@@ -403,11 +411,11 @@ class App:
 
         magic_searches = self.load_magic_searches()
         search = self.entry_var.get()
-        if search in magic_searches:
-            search = magic_searches[search]
+
         not_vscode, is_vscode = [], []
         is_vscode = [win for win in self.window_list if "Visual Studio Code" in win.title]
         not_vscode = [win for win in self.window_list if win not in is_vscode]
+
         if only_show_vscode:
             not_vscode.clear()
         if len(search) == 0:
@@ -419,6 +427,11 @@ class App:
                 if win_title != self.recent:
                     self.listbox.insert(tk.END, win_title)
         else:
+            if search in magic_searches:
+                search = magic_searches[search]
+                is_vscode = [win for win in is_vscode if search in win.title]
+            search = search.replace('[', ' ')
+            search = search.replace(']', ' ')
             keywords = search.split()
             score_list = []
             
